@@ -78,15 +78,25 @@ class SuperTuxActivity(activity.Activity):
         self._vte.grab_focus()
         bundle_path = activity.get_bundle_path()
 
+        try:
+            self._pid = self._vte.fork_command_full(
+                Vte.PtyFlags.DEFAULT,
+                bundle_path,
+                ["/bin/sh", "-c", '%s/bin/supertux' % bundle_path],
+                ["LD_LIBRARY_PATH=%s/lib" % bundle_path],
+                GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                None,
+                None)
 
-        self._pid = self._vte.fork_command_full(
-            Vte.PtyFlags.DEFAULT,
-            bundle_path,
-            ["/bin/sh", "-c", '%s/bin/supertux' % bundle_path],
-            ["LD_LIBRARY_PATH=%s/lib" % bundle_path],
-            GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-            None,
-            None)
+        except AttributeError:
+            self._pid = self._vte.spawn_sync(
+                Vte.PtyFlags.DEFAULT,
+                bundle_path,
+                ["/bin/sh", "-c", '%s/bin/supertux' % bundle_path],
+                GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                None,
+                None)
 
     def on_child_exit(self, widget):
         if not DEBUG_TERMINAL:
