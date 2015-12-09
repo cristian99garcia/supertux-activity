@@ -4,4 +4,4 @@ service_name = org.x.tuxsuper
 icon = Gamepad
 activity_version = 1
 show_launcher = yes
-exec = sugarTux
+class = supertux_activity.SuperTuxActivity
