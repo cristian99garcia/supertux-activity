@@ -26,22 +26,28 @@ DEBUG_TERMINAL = False
 class SuperTuxActivity(activity.Activity):
 
     def __init__(self, handle):
-        import gtk, pango, platform, sys
+        import gtk, pango, platform, sys, os
         from ctypes import cdll
+        
+        self.load_libs = True;
+        bundle_path = activity.get_bundle_path()
 
-        if platform.machine().startswith('arm'):
-            pass # FIXME
+        if platform.machine().startswith('arm'):  # Needs arm libs
+            self.load_libs = False
 
         else:
+            self.load_libs = True
+
             if platform.architecture()[0] == '64bit':
-                vte_path = "x86-64"
+                arch = "x86-64"
 
             else:
-                vte_path = "x86"
+                arch = "x86"
 
-            vte = cdll.LoadLibrary("lib/%s/libvte.so.9" % vte_path)
+            libs_path = os.path.join(bundle_path, "lib/", arch)
+            vte = cdll.LoadLibrary(os.path.join(libs_path, "libvte.so.9"))
+            sys.path.append(libs_path)  # If is arm, vte_path no exists
 
-        sys.path.append("lib/%s" % vte_path)
         import vte
 
         super(SuperTuxActivity, self).__init__(handle, create_jobject=False)
@@ -79,11 +85,19 @@ class SuperTuxActivity(activity.Activity):
         # now start subprocess.
         self._vte.connect('child-exited', self.on_child_exit)
         self._vte.grab_focus()
-        bundle_path = activity.get_bundle_path()
+
+        if self.load_libs:
+            envv = ["LD_LIBRARY_PATH=%s" % libs_path]
+        
+        else:
+            envv = []
+            
+        argv = ['/bin/sh','-c', os.path.join(bundle_path, "bin/supertux")]
+
         self._pid = self._vte.fork_command \
             (command='/bin/sh',
-             argv=['/bin/sh','-c', '%s/bin/supertux' % bundle_path],
-             envv=["LD_LIBRARY_PATH=%s/lib" % bundle_path],
+             argv=argv,
+             envv=envv,
              directory=bundle_path)
 
     def on_child_exit(self, widget):
