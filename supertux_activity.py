@@ -93,7 +93,7 @@ class SuperTuxActivity(activity.Activity):
                 Vte.PtyFlags.DEFAULT,
                 bundle_path,
                 ["/bin/sh", "-c", '%s/bin/supertux' % bundle_path],
-                GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                [],
                 GLib.SpawnFlags.DO_NOT_REAP_CHILD,
                 None,
                 None)
