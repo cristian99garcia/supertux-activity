@@ -17,49 +17,52 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-import os
-import sys
-import time
-import signal
-import subprocess
-import thread
-import fcntl
 
-from gettext import gettext as _
+from sugar.activity import activity
 
-from gi.repository import Gtk
-from gi.repository import Vte
-from gi.repository import GLib
-from gi.repository import Pango
-
-from sugar3.activity import activity
-from sugar3.graphics.toolbutton import ToolButton
-from sugar3.graphics.toolbarbox import ToolbarBox
-from sugar3.activity.widgets import _create_activity_icon as ActivityIcon
-from sugar3.activity.activity import get_bundle_path
-from sugar3 import profile
-
-from sugar3.presence import presenceservice
-
+# Set to false to hide terminal and auto quit on exit
 DEBUG_TERMINAL = False
-
 
 class SuperTuxActivity(activity.Activity):
 
     def __init__(self, handle):
+        import gtk, pango, platform, sys
+        from ctypes import cdll
+
+        if platform.machine().startswith('arm'):
+            pass # FIXME
+
+        else:
+            if platform.architecture()[0] == '64bit':
+                vte_path = "x86-64"
+
+            else:
+                vte_path = "x86"
+
+            vte = cdll.LoadLibrary("lib/%s/libvte.so.9" % vte_path)
+
+        sys.path.append("lib/%s" % vte_path)
+        import vte
+
         super(SuperTuxActivity, self).__init__(handle, create_jobject=False)
 
         self.__source_object_id = None
-        self._vte = Vte.Terminal()
+
+        # creates vte widget
+        self._vte = vte.Terminal()
 
         if DEBUG_TERMINAL:
             toolbox = activity.ActivityToolbox(self)
             toolbar = toolbox.get_activity_toolbar()
             self.set_toolbox(toolbox)
 
-            self._vte.set_size(30, 5)
+            self._vte.set_size(30,5)
             self._vte.set_size_request(200, 300)
-            self._vte.set_font(Pango.FontDescription('Monospace 10'))
+            font = 'Monospace 10'
+            self._vte.set_font(pango.FontDescription(font))
+            self._vte.set_colors(gtk.gdk.color_parse ('#E7E7E7'),
+                                 gtk.gdk.color_parse ('#000000'),
+                                 [])
 
             vtebox = gtk.HBox()
             vtebox.pack_start(self._vte)
@@ -77,28 +80,15 @@ class SuperTuxActivity(activity.Activity):
         self._vte.connect('child-exited', self.on_child_exit)
         self._vte.grab_focus()
         bundle_path = activity.get_bundle_path()
-
-        try:
-            self._pid = self._vte.fork_command_full(
-                Vte.PtyFlags.DEFAULT,
-                bundle_path,
-                ["/bin/sh", "-c", '%s/bin/supertux' % bundle_path],
-                ["LD_LIBRARY_PATH=%s/lib" % bundle_path],
-                GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-                None,
-                None)
-
-        except AttributeError:
-            self._pid = self._vte.spawn_sync(
-                Vte.PtyFlags.DEFAULT,
-                bundle_path,
-                ["/bin/sh", "-c", '%s/bin/supertux' % bundle_path],
-                [],
-                GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-                None,
-                None)
+        self._pid = self._vte.fork_command \
+            (command='/bin/sh',
+             argv=['/bin/sh','-c', '%s/bin/supertux' % bundle_path],
+             envv=["LD_LIBRARY_PATH=%s/lib" % bundle_path],
+             directory=bundle_path)
 
     def on_child_exit(self, widget):
+        """This method is invoked when the user's script exits."""
+        import sys
         if not DEBUG_TERMINAL:
             sys.exit()
 
