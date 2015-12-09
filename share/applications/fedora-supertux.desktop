@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=SuperTux
+Comment=A 2D jump'n'run game similar to Mario Bros
+Exec=supertux
+Icon=supertux.xpm
+Terminal=false
+Type=Application
+Encoding=UTF-8
+Categories=Application;Game;ArcadeGame;X-Fedora;
+X-Desktop-File-Install-Version=0.3
